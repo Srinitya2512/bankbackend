@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bank App</title>
+</head>
+<body>
+    <h1>Bank Accounts</h1>
+    <button onclick="loadAccounts()">Refresh</button>
+    <div id="account-list"></div>
+
+    <script>
+        function loadAccounts() {
+            fetch('/api/accounts')
+                .then(res => res.json())
+                .then(data => {
+                    const list = document.getElementById("account-list");
+                    list.innerHTML = "";
+                    data.forEach(acc => {
+                        list.innerHTML += `<p>${acc.owner}: $${acc.balance}</p>`;
+                    });
+                });
+        }
+
+        window.onload = loadAccounts;
+    </script>
+</body>
+</html>
