@@ -2,6 +2,8 @@ package com.bankapp.controller;
 
 import com.bankapp.model.BankAccount;
 import com.bankapp.repository.BankAccountRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,7 +12,7 @@ import java.util.List;
 @RequestMapping("/api/accounts")
 public class BankAccountController {
     private final BankAccountRepository repo;
-    private static Long nextId = 1L;
+    //private static Long nextId = 1L;
     public BankAccountController(BankAccountRepository repo) {
         this.repo = repo;
     }
@@ -21,12 +23,26 @@ public class BankAccountController {
     }
 
     @PostMapping
-    public BankAccount createAccount(@RequestBody CreateAccountRequest request) {
-        BankAccount account = new BankAccount();
-        account.setId(nextId++);
-        account.setOwner(request.getOwner());
-        account.setBalance(request.getBalance());
-        return repo.save(account);
+    public ResponseEntity<?> createAccount(@RequestBody CreateAccountRequest request) {
+        try {
+            if (request.getOwner() == null || request.getOwner().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Owner name is required");
+            }
+            if (request.getBalance() < 0) {
+                return ResponseEntity.badRequest().body("Balance cannot be negative");
+            }
+            
+            BankAccount account = new BankAccount();
+          //  account.setId(nextId++);
+            account.setOwner(request.getOwner());
+            account.setBalance(request.getBalance());
+            BankAccount savedAccount = repo.save(account);
+            
+            return ResponseEntity.ok(savedAccount);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                               .body("Error creating account: " + e.getMessage());
+        }
     }
 
     @PutMapping("/{id}/deposit")

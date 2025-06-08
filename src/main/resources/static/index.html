@@ -75,21 +75,28 @@
         return;
       }
 
-      const response = await fetch(apiBase, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      try {
+        const response = await fetch(apiBase, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
             owner: owner,
             balance: balance
           })
-      });
+        });
 
-      if (response.ok) {
-        document.getElementById("owner").value = "";
-        document.getElementById("balance").value = "";
-        loadAccounts();
-      } else {
-        alert("Failed to create account.");
+        if (response.ok) {
+          document.getElementById("owner").value = "";
+          document.getElementById("balance").value = "";
+          loadAccounts();
+        } else {
+          const errorText = await response.text();
+          alert(`Failed to create account: ${errorText}`);
+          console.error('Error response:', errorText);
+        }
+      } catch (error) {
+        console.error('Error creating account:', error);
+        alert(`Error creating account: ${error.message}`);
       }
     }
 
