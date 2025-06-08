@@ -78,7 +78,10 @@
       const response = await fetch(apiBase, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ owner, balance })
+        body: JSON.stringify({
+            owner: owner,
+            balance: balance
+          })
       });
 
       if (response.ok) {

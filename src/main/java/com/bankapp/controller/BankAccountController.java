@@ -10,7 +10,7 @@ import java.util.List;
 @RequestMapping("/api/accounts")
 public class BankAccountController {
     private final BankAccountRepository repo;
-
+    private static Long nextId = 1L;
     public BankAccountController(BankAccountRepository repo) {
         this.repo = repo;
     }
@@ -21,7 +21,11 @@ public class BankAccountController {
     }
 
     @PostMapping
-    public BankAccount createAccount(@RequestBody BankAccount account) {
+    public BankAccount createAccount(@RequestBody CreateAccountRequest request) {
+        BankAccount account = new BankAccount();
+        account.setId(nextId++);
+        account.setOwner(request.getOwner());
+        account.setBalance(request.getBalance());
         return repo.save(account);
     }
 
@@ -41,4 +45,15 @@ public class BankAccountController {
         }
         throw new IllegalArgumentException("Insufficient funds");
     }
+}
+
+class CreateAccountRequest {
+    private String owner;
+    private double balance;
+
+    // Getters and setters
+    public String getOwner() { return owner; }
+    public void setOwner(String owner) { this.owner = owner; }
+    public double getBalance() { return balance; }
+    public void setBalance(double balance) { this.balance = balance; }
 }
