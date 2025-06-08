@@ -1,75 +1,67 @@
 package com.bankapp.controller;
 
 import com.bankapp.model.BankAccount;
-import com.bankapp.repository.BankAccountRepository;
-import org.springframework.http.HttpStatus;
+import com.bankapp.service.BankAccountService;
+import com.bankapp.dto.TransferRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.Map;
 
 @RestController
-@RequestMapping("/api/accounts")
+@RequestMapping("/api")
 public class BankAccountController {
-    private final BankAccountRepository repo;
-    //private static Long nextId = 1L;
-    public BankAccountController(BankAccountRepository repo) {
-        this.repo = repo;
+    private final BankAccountService bankAccountService;
+
+    public BankAccountController(BankAccountService bankAccountService) {
+        this.bankAccountService = bankAccountService;
+    }
+    
+    @GetMapping("/balance")
+    public ResponseEntity<?> getBalance(@AuthenticationPrincipal String username) {
+        return bankAccountService.getBalance(username);
+    }
+    
+    @PostMapping("/transfer")
+    public ResponseEntity<?> transfer(
+        @AuthenticationPrincipal String username,
+        @RequestBody TransferRequest request
+    ) {
+        return bankAccountService.transfer(username, request);
+    }
+    
+    @PostMapping("/deposit")
+    public ResponseEntity<?> deposit(
+        @AuthenticationPrincipal String username,
+        @RequestBody Map<String, Double> request
+    ) {
+        return bankAccountService.deposit(username, request.get("amount"));
     }
 
-    @GetMapping
-    public List<BankAccount> getAllAccounts() {
-        return repo.findAll();
+    @PostMapping("/withdraw")
+    public ResponseEntity<?> withdraw(
+        @AuthenticationPrincipal String username,
+        @RequestBody Map<String, Double> request
+    ) {
+        return bankAccountService.withdraw(username, request.get("amount"));
     }
 
-    @PostMapping
-    public ResponseEntity<?> createAccount(@RequestBody CreateAccountRequest request) {
-        try {
-            if (request.getOwner() == null || request.getOwner().trim().isEmpty()) {
-                return ResponseEntity.badRequest().body("Owner name is required");
-            }
-            if (request.getBalance() < 0) {
-                return ResponseEntity.badRequest().body("Balance cannot be negative");
-            }
-            
-            BankAccount account = new BankAccount();
-          //  account.setId(nextId++);
-            account.setOwner(request.getOwner());
-            account.setBalance(request.getBalance());
-            BankAccount savedAccount = repo.save(account);
-            
-            return ResponseEntity.ok(savedAccount);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                               .body("Error creating account: " + e.getMessage());
-        }
+    @PostMapping("/account")
+    public ResponseEntity<?> createAccount(
+        @AuthenticationPrincipal String username,
+        @RequestBody Map<String, Double> request
+    ) {
+        return bankAccountService.createAccount(username, request.get("balance"));
     }
-
-    @PutMapping("/{id}/deposit")
-    public BankAccount deposit(@PathVariable Long id, @RequestBody double amount) {
-        BankAccount acc = repo.findById(id).orElseThrow();
-        acc.setBalance(acc.getBalance() + amount);
-        return repo.save(acc);
+    
+    @GetMapping("/admin/accounts")
+    public ResponseEntity<?> getAllAccounts() {
+        return bankAccountService.getAllAccounts();
     }
-
-    @PutMapping("/{id}/withdraw")
-    public BankAccount withdraw(@PathVariable Long id, @RequestBody double amount) {
-        BankAccount acc = repo.findById(id).orElseThrow();
-        if (acc.getBalance() >= amount) {
-            acc.setBalance(acc.getBalance() - amount);
-            return repo.save(acc);
-        }
-        throw new IllegalArgumentException("Insufficient funds");
+    
+    @GetMapping("/admin/transactions")
+    public ResponseEntity<?> getAllTransactions() {
+        return bankAccountService.getAllTransactions();
     }
-}
-
-class CreateAccountRequest {
-    private String owner;
-    private double balance;
-
-    // Getters and setters
-    public String getOwner() { return owner; }
-    public void setOwner(String owner) { this.owner = owner; }
-    public double getBalance() { return balance; }
-    public void setBalance(double balance) { this.balance = balance; }
 }

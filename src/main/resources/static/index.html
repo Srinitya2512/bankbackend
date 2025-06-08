@@ -19,7 +19,7 @@
       border-radius: 8px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
-    input[type="text"], input[type="number"] {
+    input[type="text"], input[type="number"], input[type="password"] {
       padding: 5px;
       margin: 5px;
     }
@@ -28,124 +28,169 @@
       margin: 5px;
       cursor: pointer;
     }
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
 
-  <h1>Bank Account Dashboard</h1>
+  <div id="loginSection">
+    <h2>Login</h2>
+    <input type="text" id="loginUsername" placeholder="Username" />
+    <input type="password" id="loginPassword" placeholder="Password" />
+    <button onclick="login()">Login</button>
+    
+    <h2>Register</h2>
+    <input type="text" id="registerUsername" placeholder="Username" />
+    <input type="password" id="registerPassword" placeholder="Password" />
+    <button onclick="register()">Register</button>
+  </div>
 
-  <h3>Create New Account</h3>
-  <input type="text" id="owner" placeholder="Owner Name" />
-  <input type="number" id="balance" placeholder="Initial Balance" />
-  <button onclick="createAccount()">Create Account</button>
+  <div id="accountSection" class="hidden">
+    <h1>Bank Account Dashboard</h1>
 
-  <h3>All Accounts</h3>
-  <button onclick="loadAccounts()">Refresh</button>
-  <div id="accounts"></div>
+    <h3>Create New Account</h3>
+    <input type="number" id="initialBalance" placeholder="Initial Balance" />
+    <button onclick="createAccount()">Create Account</button>
+
+    <h3>Your Account</h3>
+    <button onclick="loadAccount()">Refresh</button>
+    <div id="accountInfo"></div>
+  </div>
 
   <script>
-    const apiBase = "/api/accounts";
+    let token = null;
+    const apiBase = "/api";
 
-    async function loadAccounts() {
-      const res = await fetch(apiBase);
-      const accounts = await res.json();
-      const container = document.getElementById("accounts");
-      container.innerHTML = "";
-
-      accounts.forEach(account => {
-        const div = document.createElement("div");
-        div.className = "account";
-        div.innerHTML = `
-          <strong>${account.owner}</strong> (ID: ${account.id})<br/>
-          Balance: $${account.balance.toFixed(2)}<br/><br/>
-          <input type="number" id="amount-${account.id}" placeholder="Amount" />
-          <button onclick="deposit(${account.id})">Deposit</button>
-          <button onclick="withdraw(${account.id})">Withdraw</button>
-        `;
-        container.appendChild(div);
-      });
-    }
-
-    async function createAccount() {
-      const owner = document.getElementById("owner").value.trim();
-      const balance = parseFloat(document.getElementById("balance").value);
-
-      if (!owner || isNaN(balance)) {
-        alert("Please enter valid owner and balance.");
-        return;
-      }
+    async function register() {
+      const username = document.getElementById("registerUsername").value;
+      const password = document.getElementById("registerPassword").value;
 
       try {
-        const response = await fetch(apiBase, {
+        const response = await fetch(`${apiBase}/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            owner: owner,
-            balance: balance
-          })
+          body: JSON.stringify({ username, password })
         });
 
         if (response.ok) {
-          document.getElementById("owner").value = "";
-          document.getElementById("balance").value = "";
-          loadAccounts();
+          alert("Registration successful! Please login.");
         } else {
-          const errorText = await response.text();
-          alert(`Failed to create account: ${errorText}`);
-          console.error('Error response:', errorText);
+          const error = await response.text();
+          alert(`Registration failed: ${error}`);
         }
       } catch (error) {
-        console.error('Error creating account:', error);
-        alert(`Error creating account: ${error.message}`);
+        alert(`Error: ${error.message}`);
       }
     }
 
-    async function deposit(id) {
-      const amountField = document.getElementById(`amount-${id}`);
-      const amount = parseFloat(amountField.value);
-      if (isNaN(amount) || amount <= 0) {
-        alert("Invalid deposit amount.");
-        return;
-      }
+    async function login() {
+      const username = document.getElementById("loginUsername").value;
+      const password = document.getElementById("loginPassword").value;
 
-      const response = await fetch(`${apiBase}/${id}/deposit`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: amount
-      });
+      try {
+        const response = await fetch(`${apiBase}/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        });
 
-      if (response.ok) {
-        amountField.value = "";
-        loadAccounts();
-      } else {
-        alert("Deposit failed.");
-      }
-    }
-
-    async function withdraw(id) {
-      const amountField = document.getElementById(`amount-${id}`);
-      const amount = parseFloat(amountField.value);
-      if (isNaN(amount) || amount <= 0) {
-        alert("Invalid withdrawal amount.");
-        return;
-      }
-
-      const response = await fetch(`${apiBase}/${id}/withdraw`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: amount
-      });
-
-      if (response.ok) {
-        amountField.value = "";
-        loadAccounts();
-      } else {
-        const error = await response.text();
-        alert("Withdrawal failed: " + error);
+        if (response.ok) {
+          token = await response.text();
+          document.getElementById("loginSection").classList.add("hidden");
+          document.getElementById("accountSection").classList.remove("hidden");
+          loadAccount();
+        } else {
+          alert("Login failed");
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
       }
     }
 
-    window.onload = loadAccounts;
+    async function createAccount() {
+      const balance = parseFloat(document.getElementById("initialBalance").value);
+
+      try {
+        const response = await fetch(`${apiBase}/account`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ balance })
+        });
+
+        if (response.ok) {
+          document.getElementById("initialBalance").value = "";
+          loadAccount();
+        } else {
+          const error = await response.text();
+          alert(`Failed to create account: ${error}`);
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
+
+    async function loadAccount() {
+      try {
+        const response = await fetch(`${apiBase}/balance`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const balance = await response.json();
+          const container = document.getElementById("accountInfo");
+          container.innerHTML = `
+            <div class="account">
+              <strong>Current Balance: $${balance.toFixed(2)}</strong><br/><br/>
+              <input type="number" id="amount" placeholder="Amount" />
+              <button onclick="deposit()">Deposit</button>
+              <button onclick="withdraw()">Withdraw</button>
+            </div>
+          `;
+        }
+      } catch (error) {
+        console.error('Error loading account:', error);
+      }
+    }
+
+    async function deposit() {
+      const amount = parseFloat(document.getElementById("amount").value);
+      await performTransaction('deposit', amount);
+    }
+
+    async function withdraw() {
+      const amount = parseFloat(document.getElementById("amount").value);
+      await performTransaction('withdraw', amount);
+    }
+
+    async function performTransaction(type, amount) {
+      try {
+        const response = await fetch(`${apiBase}/${type}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ amount })
+        });
+
+        if (response.ok) {
+          document.getElementById("amount").value = "";
+          loadAccount();
+        } else {
+          const error = await response.text();
+          alert(`Transaction failed: ${error}`);
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    }
   </script>
 </body>
 </html>
